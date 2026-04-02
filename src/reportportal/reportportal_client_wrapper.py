@@ -247,7 +247,8 @@ class ReportPortalClientWrapper:
     def start_test_case(self, name: str, start_time: str, parent_id: str,
                        attributes: Optional[List[Dict]] = None,
                        description: Optional[str] = None,
-                       code_ref: Optional[str] = None) -> str:
+                       code_ref: Optional[str] = None,
+                       retry: bool = False) -> str:
         """
         Start a test case.
 
@@ -258,6 +259,7 @@ class ReportPortalClientWrapper:
             attributes: Test case attributes
             description: Test case description
             code_ref: Code reference for the test (e.g., "path/to/test.py::test_name")
+            retry: If True, marks this test case as a retry of a previous attempt
 
         Returns:
             Test case item ID
@@ -265,7 +267,7 @@ class ReportPortalClientWrapper:
         if self.dry_run:
             mock_id = self._generate_mock_id()
             logger.info(f"[DRY-RUN] Would start test case '{name}' with ID: {mock_id}")
-            logger.info(f"[DRY-RUN] Parent: {parent_id}, Code ref: {code_ref}")
+            logger.info(f"[DRY-RUN] Parent: {parent_id}, Code ref: {code_ref}, Retry: {retry}")
             return mock_id
 
         if not self.client:
@@ -279,10 +281,11 @@ class ReportPortalClientWrapper:
                 attributes=attributes,
                 description=description,
                 parent_item_id=parent_id,
-                code_ref=code_ref
+                code_ref=code_ref,
+                retry=retry
             )
             logger.debug(f"Started test case '{name}' with ID: {case_id}")
-            logger.debug(f"Parent: {parent_id}, Code ref: {code_ref}")
+            logger.debug(f"Parent: {parent_id}, Code ref: {code_ref}, Retry: {retry}")
             return case_id
         except Exception as e:
             logger.error(f"Failed to start test case '{name}': {e}")

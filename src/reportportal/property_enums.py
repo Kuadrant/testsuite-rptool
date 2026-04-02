@@ -11,6 +11,7 @@ class ReportPortalProperties(Enum):
     LAUNCH_DESCRIPTION = '__rp_launch_description'
     SUITE_DESCRIPTION = '__rp_suite_description'
     CASE_DESCRIPTION = '__rp_case_description'
+    RERUNS = '__rp_reruns'
     
     @classmethod
     def is_rp_property(cls, key: str) -> bool:

@@ -5,10 +5,20 @@ This module handles filtering and processing of test properties,
 including ReportPortal-specific metadata extraction.
 """
 
+from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Tuple
 from loguru import logger
 
 from .property_enums import ReportPortalProperties
+
+
+@dataclass
+class CasePropertyResult:
+    """Result of filtering test case properties."""
+    properties: List[Dict[str, str]] = field(default_factory=list)
+    description: Optional[str] = None
+    reruns: int = 0
+    rerun_messages: List[str] = field(default_factory=list)
 
 
 class PropertyFilter:
@@ -58,39 +68,50 @@ class PropertyFilter:
         
         return filtered_properties, suite_description, launch_description
     
-    def filter_case_properties(self, properties: List[Dict[str, str]]) -> Tuple[List[Dict[str, str]], Optional[str]]:
+    def filter_case_properties(self, properties: List[Dict[str, str]]) -> CasePropertyResult:
         """
         Filter test case properties and extract description metadata.
-        
+
         Args:
             properties: List of property dictionaries
-            
+
         Returns:
-            Tuple of (filtered_properties, case_description)
+            CasePropertyResult with filtered properties, description, and rerun info
         """
-        filtered_properties = []
-        case_description = None
-        
+        result = CasePropertyResult()
+
         # Handle None or empty input
         if not properties:
-            return filtered_properties, case_description
-        
+            return result
+
         for prop in properties:
             key = prop.get('key')
             value = prop.get('value')
-            
+
             if key == ReportPortalProperties.CASE_DESCRIPTION.value:
-                case_description = value
+                result.description = value
                 logger.debug("Extracted case description from test properties")
-                
+
+            elif key == ReportPortalProperties.RERUNS.value:
+                try:
+                    result.reruns = max(0, int(value))
+                except (TypeError, ValueError):
+                    logger.warning(f"Invalid rerun count value: {value!r}. Defaulting to 0.")
+                    result.reruns = 0
+                logger.debug(f"Extracted rerun count: {result.reruns}")
+
+            elif key and key.startswith('__rp_rerun_') and key.endswith('_message'):
+                result.rerun_messages.append(value or "")
+                logger.debug(f"Extracted rerun message: {key}")
+
             elif not ReportPortalProperties.is_rp_property(key):
                 # Keep non-RP properties as regular attributes
-                filtered_properties.append(prop)
+                result.properties.append(prop)
             else:
                 # Log other RP properties that are being filtered out
                 logger.debug(f"Filtering out RP property: {key}")
-        
-        return filtered_properties, case_description
+
+        return result
     
     def promote_info_collector_properties(self, suite_name: str, suite_properties: List[Dict[str, str]], 
                                         launch_description: Optional[str]) -> Tuple[Optional[List[Dict[str, str]]], Optional[str]]:

@@ -75,15 +75,15 @@ class TestPropertyFilter:
             {"key": "__rp_filtered", "value": "should be filtered"}
         ]
         
-        filtered_props, case_desc = filter_obj.filter_case_properties(properties)
-        
+        case_result = filter_obj.filter_case_properties(properties)
+
         # Should keep non-RP properties
-        assert len(filtered_props) == 2
-        assert {"key": "color", "value": "green"} in filtered_props
-        assert {"key": "component", "value": "TestComponent"} in filtered_props
-        
+        assert len(case_result.properties) == 2
+        assert {"key": "color", "value": "green"} in case_result.properties
+        assert {"key": "component", "value": "TestComponent"} in case_result.properties
+
         # Should extract description
-        assert case_desc == "Case description"
+        assert case_result.description == "Case description"
     
     def test_filter_case_properties_no_description(self):
         """Test case property filtering with no description."""
@@ -94,20 +94,47 @@ class TestPropertyFilter:
             {"key": "priority", "value": "high"}
         ]
         
-        filtered_props, case_desc = filter_obj.filter_case_properties(properties)
-        
-        assert len(filtered_props) == 2
-        assert case_desc is None
+        case_result = filter_obj.filter_case_properties(properties)
+
+        assert len(case_result.properties) == 2
+        assert case_result.description is None
     
     def test_filter_case_properties_empty(self):
         """Test case property filtering with empty list."""
         filter_obj = PropertyFilter()
         
-        filtered_props, case_desc = filter_obj.filter_case_properties([])
-        
-        assert filtered_props == []
-        assert case_desc is None
+        case_result = filter_obj.filter_case_properties([])
+
+        assert case_result.properties == []
+        assert case_result.description is None
     
+    def test_filter_case_properties_with_reruns_and_messages(self):
+        """Test case property filtering with rerun metadata."""
+        filter_obj = PropertyFilter()
+
+        properties = [
+            {"key": "__rp_reruns", "value": "2"},
+            {"key": "__rp_rerun_1_message", "value": "first failure"},
+            {"key": "__rp_rerun_2_message", "value": "second failure"},
+            {"key": "component", "value": "TestComponent"},
+        ]
+
+        case_result = filter_obj.filter_case_properties(properties)
+
+        assert case_result.reruns == 2
+        assert case_result.rerun_messages == ["first failure", "second failure"]
+        assert {"key": "component", "value": "TestComponent"} in case_result.properties
+
+    def test_filter_case_properties_with_invalid_reruns_value(self):
+        """Test case property filtering with invalid rerun count."""
+        filter_obj = PropertyFilter()
+
+        properties = [{"key": "__rp_reruns", "value": "not-an-int"}]
+
+        case_result = filter_obj.filter_case_properties(properties)
+
+        assert case_result.reruns == 0
+
     def test_promote_info_collector_properties(self):
         """Test promotion of info-collector properties."""
         filter_obj = PropertyFilter()
@@ -320,8 +347,8 @@ class TestPropertyFilterIntegration:
             {"key": "__rp_internal_tag", "value": "should be filtered"}
         ]
         
-        filtered_props, case_desc = filter_obj.filter_case_properties(case_properties)
-        
+        case_result = filter_obj.filter_case_properties(case_properties)
+
         # Should keep non-RP properties
         expected_props = [
             {"key": "color", "value": "red"},
@@ -329,8 +356,8 @@ class TestPropertyFilterIntegration:
             {"key": "issue", "value": "ISSUE-123"}
         ]
         
-        assert len(filtered_props) == 3
+        assert len(case_result.properties) == 3
         for prop in expected_props:
-            assert prop in filtered_props
-        
-        assert case_desc == "Test case for component X"
+            assert prop in case_result.properties
+
+        assert case_result.description == "Test case for component X"

@@ -233,20 +233,54 @@ class RPWriter:
             attributes=suite_properties
         )
     
+    def _create_retry_items(self, test_name: str, code_ref: str, case_result,
+                           suite_id: str, start_time: int, rerun_duration: int) -> None:
+        """
+        Create retry items for failed rerun attempts.
+
+        Args:
+            test_name: Full test case name
+            code_ref: Code reference for the test
+            case_result: Filtered case property result
+            suite_id: Parent suite ID
+            start_time: Test case start time
+            rerun_duration: Duration allocated per retry attempt
+        """
+        for attempt in range(case_result.reruns):
+            attempt_start = start_time + (attempt * rerun_duration)
+            retry_id = self.rp_client.start_test_case(
+                name=test_name,
+                start_time=str(attempt_start),
+                parent_id=suite_id,
+                attributes=case_result.properties,
+                description=case_result.description,
+                code_ref=code_ref,
+                retry=True
+            )
+            if attempt < len(case_result.rerun_messages):
+                self.rp_client.log_message(retry_id, case_result.rerun_messages[attempt], "ERROR")
+            self.rp_client.finish_test_case(
+                retry_id,
+                end_time=str(attempt_start + rerun_duration),
+                status="FAILED",
+                attributes=case_result.properties
+            )
+            logger.debug(f"Created retry {attempt + 1}/{case_result.reruns} for '{test_name}'")
+
     def _process_test_case(self, case_data: dict, suite_id: str, start_time: int) -> int:
         """
         Process a single test case.
-        
+
         Args:
             case_data: Test case data dictionary
             suite_id: Parent suite ID
             start_time: Test case start time
-            
+
         Returns:
             Test case runtime in milliseconds
         """
         # Filter case properties
-        filtered_props, case_desc = self.property_filter.filter_case_properties(
+        case_result = self.property_filter.filter_case_properties(
             case_data['properties']
         )
 
@@ -254,16 +288,24 @@ class RPWriter:
         test_name = f"{case_data['converted_classname']}::{case_data['name']}"
         code_ref = test_name
 
-        # Start test case
+        # Create retry items for each rerun attempt before the final result
+        final_start_time = start_time
+        if case_result.reruns > 0:
+            rerun_duration = case_data['time'] // (case_result.reruns + 1)
+            self._create_retry_items(test_name, code_ref, case_result, suite_id, start_time, rerun_duration)
+            final_start_time = start_time + (case_result.reruns * rerun_duration)
+
+        # Start final test case
         case_id = self.rp_client.start_test_case(
             name=test_name,
-            start_time=str(start_time),
+            start_time=str(final_start_time),
             parent_id=suite_id,
-            attributes=filtered_props,
-            description=case_desc,
-            code_ref=code_ref
+            attributes=case_result.properties,
+            description=case_result.description,
+            code_ref=code_ref,
+            retry=case_result.reruns > 0
         )
-        
+
         # Log test outputs and results
         self.rp_client.log_test_outputs(
             case_id,
@@ -273,14 +315,14 @@ class RPWriter:
             case_data['errors'],
             case_data['skipped']
         )
-        
+
         # Finish test case
         end_time = start_time + case_data['time']
         self.rp_client.finish_test_case(
             case_id,
             end_time=str(end_time),
             status=case_data['status'],
-            attributes=filtered_props
+            attributes=case_result.properties
         )
-        
+
         return case_data['time']

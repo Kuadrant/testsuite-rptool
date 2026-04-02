@@ -86,15 +86,15 @@ class TestFullReportPortalWorkflow:
         case_ids = []
         for case in test_cases:
             # Filter case properties
-            case_props, case_desc = property_filter.filter_case_properties(case['properties'])
-            
+            case_result = property_filter.filter_case_properties(case['properties'])
+
             # Start test case
             case_id = rp_wrapper.start_test_case(
                 name=case['name'],
                 start_time=suite_data['timestamp'],  # Using suite timestamp for simplicity
                 parent_id=suite_id,
-                attributes=case_props,
-                description=case_desc
+                attributes=case_result.properties,
+                description=case_result.description
             )
             case_ids.append(case_id)
             
@@ -113,7 +113,7 @@ class TestFullReportPortalWorkflow:
                 case_id=case_id,
                 end_time=suite_data['timestamp'],  # Using suite timestamp for simplicity
                 status=case['status'],
-                attributes=case_props
+                attributes=case_result.properties
             )
         
         # Finish test suite
@@ -179,29 +179,29 @@ class TestFullReportPortalWorkflow:
         
         # Test passing case
         passing_case = next(case for case in test_cases if case['name'] == 'test_passing')
-        case_props, case_desc = property_filter.filter_case_properties(passing_case['properties'])
+        case_result = property_filter.filter_case_properties(passing_case['properties'])
         expected_case_props = [
             {"key": "color", "value": "green"},
             {"key": "component", "value": "TestComponent"}
         ]
-        assert len(case_props) == 2
+        assert len(case_result.properties) == 2
         for prop in expected_case_props:
-            assert prop in case_props
-        assert case_desc is None
-        
+            assert prop in case_result.properties
+        assert case_result.description is None
+
         # Test failing case with description
         failing_case = next(case for case in test_cases if case['name'] == 'test_failing')
-        case_props, case_desc = property_filter.filter_case_properties(failing_case['properties'])
-        assert len(case_props) == 1
-        assert {"key": "color", "value": "red"} in case_props
-        assert case_desc == "Test case that fails"
-        
+        case_result = property_filter.filter_case_properties(failing_case['properties'])
+        assert len(case_result.properties) == 1
+        assert {"key": "color", "value": "red"} in case_result.properties
+        assert case_result.description == "Test case that fails"
+
         # Test skipped case
         skipped_case = next(case for case in test_cases if case['name'] == 'test_skipped')
-        case_props, case_desc = property_filter.filter_case_properties(skipped_case['properties'])
-        assert len(case_props) == 1
-        assert {"key": "color", "value": "yellow"} in case_props
-        assert case_desc is None
+        case_result = property_filter.filter_case_properties(skipped_case['properties'])
+        assert len(case_result.properties) == 1
+        assert {"key": "color", "value": "yellow"} in case_result.properties
+        assert case_result.description is None
     
     @patch('reportportal.reportportal_client_wrapper.requests.post')
     def test_auto_analysis_integration(self, mock_post):
@@ -293,9 +293,9 @@ class TestFullReportPortalWorkflow:
         assert suite_desc is None
         assert launch_desc is None
         
-        filtered_props, case_desc = property_filter.filter_case_properties([])
-        assert filtered_props == []
-        assert case_desc is None
+        case_result = property_filter.filter_case_properties([])
+        assert case_result.properties == []
+        assert case_result.description is None
 
 
 @pytest.mark.integration
@@ -324,8 +324,8 @@ class TestComponentInteraction:
             assert 'properties' in case
             assert isinstance(case['properties'], list)
             
-            case_props, _ = property_filter.filter_case_properties(case['properties'])
-            assert isinstance(case_props, list)
+            case_result = property_filter.filter_case_properties(case['properties'])
+            assert isinstance(case_result.properties, list)
     
     def test_property_filter_to_client_wrapper_data_flow(self):
         """Test data flow from property filter to client wrapper."""

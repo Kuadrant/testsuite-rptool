@@ -229,7 +229,8 @@ class TestReportPortalClientWrapper:
             attributes=[{"key": "color", "value": "green"}],
             description="Case description",
             parent_item_id="suite_456",
-            code_ref=None
+            code_ref=None,
+            retry=False
         )
 
     def test_start_test_case_with_code_ref(self):
@@ -255,7 +256,8 @@ class TestReportPortalClientWrapper:
             attributes=[{"key": "color", "value": "green"}],
             description="Case description",
             parent_item_id="suite_456",
-            code_ref="path/to/test.py::test_name"
+            code_ref="path/to/test.py::test_name",
+            retry=False
         )
 
     def test_start_test_case_no_client(self):

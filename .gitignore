@@ -4,6 +4,9 @@ venv/
 env/
 ENV/
 
+# uv
+uv.lock
+
 # Env file
 rp_env.sh
 
