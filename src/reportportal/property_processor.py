@@ -19,6 +19,7 @@ class CasePropertyResult:
     description: Optional[str] = None
     reruns: int = 0
     rerun_messages: List[str] = field(default_factory=list)
+    rerun_outputs: List[str] = field(default_factory=list)
 
 
 class PropertyFilter:
@@ -103,6 +104,10 @@ class PropertyFilter:
             elif key and key.startswith('__rp_rerun_') and key.endswith('_message'):
                 result.rerun_messages.append(value or "")
                 logger.debug(f"Extracted rerun message: {key}")
+
+            elif key and key.startswith('__rp_rerun_') and key.endswith('_output'):
+                result.rerun_outputs.append(value or "")
+                logger.debug(f"Extracted rerun output: {key}")
 
             elif not ReportPortalProperties.is_rp_property(key):
                 # Keep non-RP properties as regular attributes
