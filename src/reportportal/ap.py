@@ -45,6 +45,10 @@ def create_main_parser() -> argparse.ArgumentParser:
     except PackageNotFoundError:
         pkg_version = 'unknown (not installed)'
 
+    # Get configuration defaults (config file + env vars + built-in defaults)
+    # Must be loaded before creating arguments that use these defaults
+    defaults = _get_config_defaults()
+
     parser = argparse.ArgumentParser(
         prog='rptool',
         description='Unified command-line interface for ReportPortal tools',
@@ -61,8 +65,8 @@ def create_main_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--log-level",
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-        default="INFO",
-        help="Set the logging level (default: INFO)"
+        default=defaults["log_level"],
+        help="Set the logging level (default: from config or INFO)"
     )
 
     # Create subparsers for each command
@@ -73,9 +77,6 @@ def create_main_parser() -> argparse.ArgumentParser:
         metavar='<command>',
         required=True
     )
-
-    # Get configuration defaults (config file + env vars + built-in defaults)
-    defaults = _get_config_defaults()
 
     # Adding subparsers' arguments
     subparsers_hanlers = [
@@ -235,13 +236,6 @@ def _add_trigger_arguments(subparsers: argparse.ArgumentParser, defaults: dict) 
     )
     _add_common_rp_args(parser, defaults)
 
-    parser.add_argument(
-        "--log-level",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-        default=defaults.get("log_level", "INFO"),
-        help="Set the logging level (default: INFO)"
-    )
-
 
 def _add_summary_arguments(subparsers: argparse.ArgumentParser, defaults: dict) -> None:
     """Add arguments for summary command."""
@@ -255,12 +249,6 @@ def _add_summary_arguments(subparsers: argparse.ArgumentParser, defaults: dict) 
 
     _add_common_rp_args(parser, defaults)
 
-    parser.add_argument(
-        "--log-level",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-        default=defaults.get("log_level", "INFO"),
-        help="Set the logging level (default: INFO)"
-    )
     parser.add_argument(
         "--attribute",
         action="append",

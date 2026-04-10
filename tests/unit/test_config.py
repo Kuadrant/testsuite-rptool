@@ -14,6 +14,7 @@ from reportportal.config import (
     get_config_defaults,
     merge_with_env_vars,
     get_effective_defaults,
+    log_config_status,
 )
 
 
@@ -28,24 +29,25 @@ class TestConfigFilePath:
         assert path.name == "settings.yaml"
         assert "rptool" in str(path)
 
+
 class TestLoadConfigFile:
     """Test YAML config file loading."""
 
     def test_load_config_file_not_exists(self):
         """Test loading when config file doesn't exist."""
-        with patch('reportportal.config.get_config_file_path') as mock_path:
+        with patch("reportportal.config.get_config_file_path") as mock_path:
             mock_path.return_value = Path("/nonexistent/settings.yaml")
             config = load_config_file()
             assert config == {}
 
     def test_load_config_file_empty(self):
         """Test loading empty config file."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("")
             temp_path = f.name
 
         try:
-            with patch('reportportal.config.get_config_file_path') as mock_path:
+            with patch("reportportal.config.get_config_file_path") as mock_path:
                 mock_path.return_value = Path(temp_path)
                 config = load_config_file()
                 assert config == {}
@@ -54,8 +56,9 @@ class TestLoadConfigFile:
 
     def test_load_config_file_valid(self):
         """Test loading valid config file."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            f.write("""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(
+                """
 rp_url: "https://test.com"
 rp_project: "test_project"
 rp_token: "test_token"
@@ -63,11 +66,12 @@ trigger_auto_analysis: true
 launch_name: "Test Launch"
 launch_description: "Test Description"
 log_level: "DEBUG"
-""")
+"""
+            )
             temp_path = f.name
 
         try:
-            with patch('reportportal.config.get_config_file_path') as mock_path:
+            with patch("reportportal.config.get_config_file_path") as mock_path:
                 mock_path.return_value = Path(temp_path)
                 config = load_config_file()
                 assert config["rp_url"] == "https://test.com"
@@ -82,12 +86,12 @@ log_level: "DEBUG"
 
     def test_load_config_file_invalid_yaml(self):
         """Test loading invalid YAML file."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("invalid: yaml: content:")
             temp_path = f.name
 
         try:
-            with patch('reportportal.config.get_config_file_path') as mock_path:
+            with patch("reportportal.config.get_config_file_path") as mock_path:
                 mock_path.return_value = Path(temp_path)
                 config = load_config_file()
                 # Should return empty dict on error
@@ -101,7 +105,7 @@ class TestGetConfigDefaults:
 
     def test_get_config_defaults_builtin(self):
         """Test that built-in defaults are returned when no config file exists."""
-        with patch('reportportal.config.load_config_file') as mock_load:
+        with patch("reportportal.config.load_config_file") as mock_load:
             mock_load.return_value = {}
             defaults = get_config_defaults()
 
@@ -115,14 +119,14 @@ class TestGetConfigDefaults:
 
     def test_get_config_defaults_from_file(self):
         """Test that config file values override built-in defaults."""
-        with patch('reportportal.config.load_config_file') as mock_load:
+        with patch("reportportal.config.load_config_file") as mock_load:
             mock_load.return_value = {
                 "rp_url": "https://config-file.com",
                 "rp_project": "file_project",
                 "trigger_auto_analysis": True,
                 "launch_name": "Test Launch",
                 "launch_description": "Test Description",
-                "log_level": "DEBUG"
+                "log_level": "DEBUG",
             }
             defaults = get_config_defaults()
 
@@ -147,7 +151,7 @@ class TestMergeWithEnvVars:
             "trigger_auto_analysis": False,
             "launch_name": None,
             "launch_description": "",
-            "log_level": "INFO"
+            "log_level": "INFO",
         }
 
         with patch.dict(os.environ, {}, clear=True):
@@ -163,7 +167,7 @@ class TestMergeWithEnvVars:
             "trigger_auto_analysis": False,
             "launch_name": "Config Launch",
             "launch_description": "Config Description",
-            "log_level": "INFO"
+            "log_level": "INFO",
         }
 
         env_vars = {
@@ -172,7 +176,7 @@ class TestMergeWithEnvVars:
             "TRIGGER_AUTO_ANALYSIS": "true",
             "RP_LAUNCH_NAME": "Env Launch",
             "RP_LAUNCH_DESCRIPTION": "Env Description",
-            "LOG_LEVEL": "DEBUG"
+            "LOG_LEVEL": "DEBUG",
         }
 
         with patch.dict(os.environ, env_vars, clear=True):
@@ -198,7 +202,7 @@ class TestTriggerAutoAnalysisConversion:
             "trigger_auto_analysis": False,
             "launch_name": None,
             "launch_description": "",
-            "log_level": "INFO"
+            "log_level": "INFO",
         }
 
         true_values = ["true", "True", "TRUE", "1", "yes", "YES", "on", "ON"]
@@ -206,7 +210,9 @@ class TestTriggerAutoAnalysisConversion:
         for val in true_values:
             with patch.dict(os.environ, {"TRIGGER_AUTO_ANALYSIS": val}, clear=True):
                 merged = merge_with_env_vars(config)
-                assert merged["trigger_auto_analysis"] is True, f"Failed for value: {val}"
+                assert (
+                    merged["trigger_auto_analysis"] is True
+                ), f"Failed for value: {val}"
 
     def test_trigger_auto_analysis_false_values(self):
         """Test that various false string values are converted to boolean False."""
@@ -217,7 +223,7 @@ class TestTriggerAutoAnalysisConversion:
             "trigger_auto_analysis": True,
             "launch_name": None,
             "launch_description": "",
-            "log_level": "INFO"
+            "log_level": "INFO",
         }
 
         false_values = ["false", "False", "FALSE", "0", "no", "NO", "off", "OFF"]
@@ -225,7 +231,9 @@ class TestTriggerAutoAnalysisConversion:
         for val in false_values:
             with patch.dict(os.environ, {"TRIGGER_AUTO_ANALYSIS": val}, clear=True):
                 merged = merge_with_env_vars(config)
-                assert merged["trigger_auto_analysis"] is False, f"Failed for value: {val}"
+                assert (
+                    merged["trigger_auto_analysis"] is False
+                ), f"Failed for value: {val}"
 
     def test_trigger_auto_analysis_no_env(self):
         """Test that config value is preserved when env var is not set."""
@@ -236,7 +244,7 @@ class TestTriggerAutoAnalysisConversion:
             "trigger_auto_analysis": True,
             "launch_name": None,
             "launch_description": "",
-            "log_level": "INFO"
+            "log_level": "INFO",
         }
 
         with patch.dict(os.environ, {}, clear=True):
@@ -250,13 +258,13 @@ class TestGetEffectiveDefaults:
     def test_get_effective_defaults_priority(self):
         """Test that full priority chain works correctly."""
         # Mock config file
-        with patch('reportportal.config.load_config_file') as mock_load:
+        with patch("reportportal.config.load_config_file") as mock_load:
             mock_load.return_value = {
                 "rp_url": "https://config.com",
                 "rp_project": "config_project",
                 "trigger_auto_analysis": False,
                 "launch_name": "Config Launch",
-                "log_level": "INFO"
+                "log_level": "INFO",
             }
 
             # Set env vars
@@ -264,7 +272,7 @@ class TestGetEffectiveDefaults:
                 "RP_URL": "https://env.com",
                 "TRIGGER_AUTO_ANALYSIS": "1",
                 "RP_LAUNCH_DESCRIPTION": "Env Description",
-                "LOG_LEVEL": "DEBUG"
+                "LOG_LEVEL": "DEBUG",
             }
 
             with patch.dict(os.environ, env_vars, clear=True):
@@ -282,3 +290,59 @@ class TestGetEffectiveDefaults:
 
                 # Built-in default when neither config nor ENV
                 assert defaults["rp_token"] is None
+
+
+class TestLogConfigStatus:
+    """Test log_config_status function."""
+
+    def test_log_config_status_file_not_found(self):
+        """Test log_config_status when config file doesn't exist."""
+        from loguru import logger
+        import io
+
+        # Capture loguru output
+        log_output = io.StringIO()
+        logger.remove()
+        logger.add(log_output, level="DEBUG", format="{message}")
+
+        with patch("reportportal.config.get_config_file_path") as mock_path:
+            mock_path.return_value = Path("/nonexistent/config.yaml")
+
+            with patch("pathlib.Path.exists", return_value=False):
+                log_config_status()
+
+                # Check that "not found" message was logged
+                output = log_output.getvalue()
+                assert "not found" in output.lower()
+                assert "/nonexistent/config.yaml" in output
+
+    def test_log_config_status_empty_file(self):
+        """Test log_config_status when config file is empty."""
+        from loguru import logger
+        import io
+
+        # Capture loguru output
+        log_output = io.StringIO()
+        logger.remove()
+        logger.add(log_output, level="DEBUG", format="{message}")
+
+        with patch("reportportal.config.get_config_file_path") as mock_path:
+            mock_path.return_value = Path("/mock/.config/rptool/settings.yaml")
+
+            with patch("pathlib.Path.exists", return_value=True):
+                with patch(
+                    "builtins.open",
+                    MagicMock(
+                        return_value=MagicMock(
+                            __enter__=MagicMock(
+                                return_value=MagicMock(read=MagicMock(return_value=""))
+                            ),
+                            __exit__=MagicMock(),
+                        )
+                    ),
+                ):
+                    log_config_status()
+
+                    # Check that "empty" message was logged
+                    output = log_output.getvalue()
+                    assert "empty" in output.lower()

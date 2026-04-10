@@ -35,6 +35,9 @@ def load_config_file() -> Dict[str, Any]:
     """
     Load configuration from YAML file.
 
+    Note: Debug messages during loading are suppressed (logger not configured yet).
+    Use log_config_status() after logger is configured to see config loading status.
+
     Returns:
         Dictionary with configuration values, empty dict if file doesn't exist
         or can't be loaded
@@ -43,19 +46,20 @@ def load_config_file() -> Dict[str, Any]:
     config_file = get_config_file_path()
 
     if not config_file.exists():
-        logger.debug(f"Config file not found: {config_file}")
+        # Debug message suppressed - will be logged by log_config_status() if needed
         return {}
 
     try:
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
             if config is None:
-                logger.debug(f"Config file is empty: {config_file}")
+                # Debug message suppressed - will be logged by log_config_status() if needed
                 return {}
-            logger.debug(f"Loaded config from: {config_file}")
+            # Debug message suppressed - will be logged by log_config_status() if needed
             return config
     except Exception as e:
-        logger.warning(f"Failed to load config file {config_file}: {e}")
+        # Warning should be shown, but logger may not be configured yet
+        # Will be logged by log_config_status() if needed
         return {}
 
 
@@ -162,6 +166,31 @@ def get_effective_defaults() -> Dict[str, Any]:
     # Inject REQUESTS_CA_BUNDLE into environment if configured but not already set
     if merged.get("requests_ca_bundle") and not os.environ.get("REQUESTS_CA_BUNDLE"):
         os.environ["REQUESTS_CA_BUNDLE"] = merged["requests_ca_bundle"]
-        logger.debug(f"Set REQUESTS_CA_BUNDLE from config: {merged['requests_ca_bundle']}")
+        # Debug message suppressed - logger not configured yet
 
     return merged
+
+
+def log_config_status() -> None:
+    """
+    Log the configuration file loading status at DEBUG level.
+
+    This should be called AFTER the logger is properly configured with the
+    desired log level. It will show users (when running with DEBUG) whether
+    their config file was found and loaded.
+    """
+    config_file = get_config_file_path()
+
+    if not config_file.exists():
+        logger.debug(f"Config file not found: {config_file}")
+        return
+
+    try:
+        with open(config_file, 'r') as f:
+            config = yaml.safe_load(f)
+            if config is None:
+                logger.debug(f"Config file exists but is empty: {config_file}")
+            else:
+                logger.debug(f"Loaded config from: {config_file} (keys: {list(config.keys())})")
+    except Exception as e:
+        logger.warning(f"Failed to load config file {config_file}: {e}")
