@@ -7,6 +7,7 @@ with ReportPortal REST API.
 
 import requests
 from typing import List, Dict, Optional, Any
+from datetime import datetime
 from loguru import logger
 
 
@@ -63,6 +64,59 @@ class ReportPortalAPIClient:
             'Content-type': 'application/json',
             'accept': '*/*'
         }
+
+    @staticmethod
+    def normalize_timestamp(timestamp: Optional[Any]) -> Optional[int]:
+        """
+        Normalize timestamp to Unix milliseconds (integer).
+
+        ReportPortal API changed from returning Unix milliseconds to ISO format strings.
+        This method handles both formats for backward compatibility.
+
+        Args:
+            timestamp: Either ISO format string or Unix milliseconds (int/float)
+
+        Returns:
+            Unix timestamp in milliseconds as integer, or None if input is None
+        """
+        if timestamp is None:
+            return None
+
+        # Already in Unix milliseconds format
+        if isinstance(timestamp, (int, float)):
+            return int(timestamp)
+
+        # ISO format string - convert to Unix milliseconds
+        if isinstance(timestamp, str):
+            try:
+                dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                return int(dt.timestamp() * 1000)
+            except (ValueError, AttributeError) as e:
+                logger.warning(f"Failed to parse timestamp '{timestamp}': {e}")
+                return None
+
+        return None
+
+    def normalize_timestamps_in_dict(self, data: Dict[str, Any],
+                                     timestamp_fields: List[str] = None) -> Dict[str, Any]:
+        """
+        Normalize timestamp fields in a dictionary.
+
+        Args:
+            data: Dictionary potentially containing timestamp fields
+            timestamp_fields: List of field names to normalize (default: startTime, endTime)
+
+        Returns:
+            Dictionary with normalized timestamps
+        """
+        if timestamp_fields is None:
+            timestamp_fields = ['startTime', 'endTime']
+
+        for field in timestamp_fields:
+            if field in data:
+                data[field] = self.normalize_timestamp(data[field])
+
+        return data
 
     def build_url(self, resource: str, **params) -> str:
         """
@@ -243,7 +297,7 @@ class ReportPortalAPIClient:
             filters: Additional filters as dict (e.g., {'filter.eq.name': 'test'})
 
         Returns:
-            List of launch dictionaries
+            List of launch dictionaries with normalized timestamps (Unix milliseconds)
 
         Raises:
             ReportPortalAPIError: On API errors
@@ -261,6 +315,9 @@ class ReportPortalAPIClient:
         data = self._get(endpoint)
         launches = data.get('content', [])
 
+        # Normalize timestamps in all launches
+        launches = [self.normalize_timestamps_in_dict(launch) for launch in launches]
+
         logger.debug(f"Retrieved {len(launches)} launches")
         return launches
 
@@ -272,14 +329,15 @@ class ReportPortalAPIClient:
             launch_id: Launch UUID
 
         Returns:
-            Launch dictionary
+            Launch dictionary with normalized timestamps (Unix milliseconds)
 
         Raises:
             ReportPortalAPIError: On API errors
         """
         logger.debug(f"Fetching launch {launch_id}")
         endpoint = f'/api/v1/{self.project}/launch/{launch_id}'
-        return self._get(endpoint)
+        launch = self._get(endpoint)
+        return self.normalize_timestamps_in_dict(launch)
 
     # =========================================================================
     # Test Item Operations
@@ -298,7 +356,7 @@ class ReportPortalAPIClient:
             filters: Additional filters (e.g., {'filter.eq.status': 'FAILED'})
 
         Returns:
-            List of test item dictionaries
+            List of test item dictionaries with normalized timestamps (Unix milliseconds)
 
         Raises:
             ReportPortalAPIError: On API errors
@@ -319,6 +377,9 @@ class ReportPortalAPIClient:
         data = self._get(endpoint)
         items = data.get('content', [])
 
+        # Normalize timestamps in all test items
+        items = [self.normalize_timestamps_in_dict(item) for item in items]
+
         logger.debug(f"Retrieved {len(items)} test items")
         return items
 
@@ -330,14 +391,15 @@ class ReportPortalAPIClient:
             item_id: Test item UUID
 
         Returns:
-            Test item dictionary
+            Test item dictionary with normalized timestamps (Unix milliseconds)
 
         Raises:
             ReportPortalAPIError: On API errors
         """
         logger.debug(f"Fetching test item {item_id}")
         endpoint = f'/api/v1/{self.project}/item/{item_id}'
-        return self._get(endpoint)
+        item = self._get(endpoint)
+        return self.normalize_timestamps_in_dict(item)
 
     # =========================================================================
     # Analysis Operations
@@ -391,9 +453,8 @@ def create_api_client(url: str, project: str, token: str) -> ReportPortalAPIClie
         url: ReportPortal URL
         project: ReportPortal project name
         token: ReportPortal API token
-        logger: Optional logger instance
 
     Returns:
         Configured ReportPortalAPIClient instance
     """
-    return ReportPortalAPIClient(url, project, token, logger=logger)
+    return ReportPortalAPIClient(url, project, token)
