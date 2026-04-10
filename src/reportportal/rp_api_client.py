@@ -98,7 +98,7 @@ class ReportPortalAPIClient:
         return None
 
     def normalize_timestamps_in_dict(self, data: Dict[str, Any],
-                                     timestamp_fields: List[str] = None) -> Dict[str, Any]:
+                                     timestamp_fields: Optional[List[str]] = None) -> Dict[str, Any]:
         """
         Normalize timestamp fields in a dictionary.
 
