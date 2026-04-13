@@ -92,9 +92,10 @@ class ReportPortalAPIClient:
                 dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
                 return int(dt.timestamp() * 1000)
             except (ValueError, AttributeError) as e:
-                logger.warning(f"Failed to parse timestamp '{timestamp}': {e}")
+                logger.warning("Failed to parse timestamp '%s': %s", timestamp, e)
                 return None
 
+        logger.warning("Timestamp was unexpected type: %s", type(timestamp))
         return None
 
     def normalize_timestamps_in_dict(self, data: Dict[str, Any],

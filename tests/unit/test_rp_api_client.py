@@ -2,7 +2,6 @@
 Unit tests for ReportPortal API Client timestamp normalization.
 """
 
-import pytest
 from reportportal.rp_api_client import ReportPortalAPIClient
 
 
