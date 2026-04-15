@@ -126,8 +126,7 @@ class RPWriter:
             Launch info dictionary or None if failed
         """
         launch_properties = None
-        # Has to be not None to utilize concatenation of launch descriptions
-        initial_launch_description = self.options.launch_description or ""
+        cli_launch_description = self.options.launch_description or ""
 
         # Pre-collect all suites to find earliest timestamp and calculate total runtime
         all_suites = list(parser.parse_suites())
@@ -143,7 +142,7 @@ class RPWriter:
         logger.debug(f'Latest finish time {timestamp_rp_to_junit(max_end_time)}')
 
         # Pre-process suites to extract launch properties and descriptions
-        final_launch_description = initial_launch_description
+        promoted_description = None
         for suite_data in all_suites:
             # Filter suite properties
             filtered_props, _, launch_desc = self.property_filter.filter_suite_properties(
@@ -157,16 +156,19 @@ class RPWriter:
 
             if promoted_props is not None:
                 launch_properties = promoted_props
-                if promoted_desc:
-                    final_launch_description = promoted_desc
+                promoted_description = promoted_desc
 
-        # Start launch with earliest timestamp
+        description_list = []
+        if cli_launch_description:
+            description_list.append(cli_launch_description)
+        if promoted_description:
+            description_list.append(promoted_description)
+        final_launch_description = "\n\n".join(description_list)
+
+        # Start launch without description; final description is set in finish_launch
         launch_id = self.rp_client.start_launch(
             name=launch_name,
             start_time=str(launch_timestamp),
-            # Initial launch description will be followed (concatenated)
-            # with final_launch_description in .finish_launch()
-            description=initial_launch_description
         )
 
         # Process all suites
