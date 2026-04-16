@@ -608,6 +608,38 @@ class TestLogLevelConfig:
                 args = parser.parse_args(['summary', '--attribute', 'test:v1'])
                 assert args.log_level == 'WARNING'
 
+    def test_log_level_invalid_in_config(self):
+        """Test that invalid log level in config raises ValueError."""
+        with patch.dict(os.environ, {}, clear=True):
+            with patch('reportportal.config.load_config_file') as mock_load:
+                # Simulate config file with invalid log level
+                mock_load.return_value = {'log_level': 'VERBOSE'}
+
+                # Creating parser should raise ValueError
+                with pytest.raises(ValueError) as exc_info:
+                    create_main_parser()
+
+                # Check error message contains the invalid value
+                error_msg = str(exc_info.value)
+                assert 'Invalid log level in config' in error_msg
+                assert 'VERBOSE' in error_msg
+                assert 'Must be one of' in error_msg
+
+    def test_log_level_invalid_in_config_case_insensitive(self):
+        """Test that invalid log level works with case normalization."""
+        with patch.dict(os.environ, {}, clear=True):
+            with patch('reportportal.config.load_config_file') as mock_load:
+                # Lowercase 'trace' should also be rejected
+                mock_load.return_value = {'log_level': 'trace'}
+
+                with pytest.raises(ValueError) as exc_info:
+                    create_main_parser()
+
+                error_msg = str(exc_info.value)
+                assert 'Invalid log level in config' in error_msg
+                # Should show uppercase version in error
+                assert 'TRACE' in error_msg
+
     def test_no_premature_debug_messages_during_config_load(self):
         """Test that debug messages during config loading are suppressed until log level is set."""
         import io
@@ -637,36 +669,3 @@ class TestLogLevelConfig:
                     "Debug message 'Loaded config from' should not appear with INFO log level"
                 assert "Config file not found" not in stderr_output, \
                     "Debug message 'Config file not found' should not appear with INFO log level"
-
-    def test_config_status_logged_with_debug_level(self):
-        """Test that config file status IS logged when using DEBUG level."""
-        import io
-        from unittest.mock import patch, mock_open
-        from reportportal.rp_dispatcher import main
-
-        captured_stderr = io.StringIO()
-
-        with patch.dict(os.environ, {}, clear=True):
-            # Mock config file exists
-            with patch('reportportal.config.get_config_file_path') as mock_path:
-                mock_config_path = '/mock/.config/rptool/settings.yaml'
-                mock_path.return_value = Path(mock_config_path)
-
-                # Mock Path.exists to return True
-                with patch('pathlib.Path.exists', return_value=True):
-                    # Mock file open to return config content
-                    mock_config_content = "log_level: DEBUG\nrp_url: http://test.com\n"
-                    with patch('builtins.open', mock_open(read_data=mock_config_content)):
-                        # Redirect stderr
-                        with patch('sys.stderr', captured_stderr):
-                            try:
-                                # Run with explicit DEBUG level
-                                main(['--log-level', 'DEBUG', 'write', 'test.xml'])
-                            except SystemExit:
-                                pass
-
-                        # Check that config status message appears with DEBUG level
-                        stderr_output = captured_stderr.getvalue()
-                        # Should contain config file path in debug output
-                        assert "Config file" in stderr_output or "config" in stderr_output.lower(), \
-                            "Config file status should be logged with DEBUG log level"

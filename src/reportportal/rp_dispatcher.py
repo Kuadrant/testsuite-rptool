@@ -18,7 +18,6 @@ except ImportError:
     SHTAB_AVAILABLE = False
 
 from . import ap
-from .config import log_config_status
 from .writer import RPWriter
 from .rp_query import run_query
 from .rp_trigger import run_auto_trigger
@@ -168,8 +167,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Remove default loguru handler immediately to prevent premature debug messages
     # (e.g., during config file loading before log level is determined)
     logger.remove()
+    # Setup intermittent WARNING logger for any configuration logs
+    logger.add(sink=sys.stderr, level='WARNING')
 
-    parser = ap.create_main_parser()
+    try:
+        parser = ap.create_main_parser()
+    except ValueError as e:
+        logger.error('Improper configuration {}', str(e))
+        return 1
+
 
     # Parse arguments
     try:
@@ -178,10 +184,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         return e.code if e.code is not None else 1
 
     # Setup logging handler with configured log level
+    logger.remove()
     logger.add(sink=sys.stderr, level=args.log_level)
-
-    # Log config file status now that logger is properly configured
-    log_config_status()
 
     # Dispatch to appropriate command handler
     command_handlers = {

@@ -62,10 +62,16 @@ def create_main_parser() -> argparse.ArgumentParser:
         version=f'rptool {pkg_version}'
     )
 
+    # Validation of config file log_level
+    valid_log_levels = {"DEBUG", "INFO", "WARNING", "ERROR"}
+    configured_log_level = str(defaults.get("log_level", "INFO")).upper()
+    if configured_log_level not in valid_log_levels:
+        raise ValueError(f'Invalid log level in config: {configured_log_level}. Must be one of {valid_log_levels}')
+
     parser.add_argument(
         "--log-level",
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-        default=defaults["log_level"],
+        default=configured_log_level,
         help="Set the logging level (default: from config or INFO)"
     )
 
@@ -125,14 +131,14 @@ def _add_write_arguments(subparsers: argparse.ArgumentParser, defaults: dict) ->
     _add_common_rp_args(parser, defaults)
 
     parser.add_argument(
-        "--launch-name", 
+        "--launch-name",
         help="Override Launch name that will be reported, otherwise filename will be used",
         default=defaults['rp_launch_name']
     )
     parser.add_argument(
-        "--launch-description", 
+        "--launch-description",
         help="Custom head section to launch description, passthrough description will be added from the junit if available",
-        # The empty string from defaults is necessary to enable additional description to be added on .finish_launch() 
+        # The empty string from defaults is necessary to enable additional description to be added on .finish_launch()
         default=defaults['rp_launch_description'],
     )
     parser.add_argument(
@@ -148,7 +154,7 @@ def _add_write_arguments(subparsers: argparse.ArgumentParser, defaults: dict) ->
         default=False
     )
     parser.add_argument("junits", nargs='+', help="path to all junit results, multiple files will be reportes as one launch")
-    
+
 
 def _add_query_arguments(subparsers: argparse.ArgumentParser, defaults: dict) -> None:
     """Add arguments for query command."""
