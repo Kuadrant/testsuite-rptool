@@ -46,7 +46,6 @@ class ReportPortalAPIClient:
             url: ReportPortal URL (e.g., https://reportportal.example.com)
             project: ReportPortal project name
             token: ReportPortal API token
-            logger: Optional logger instance (if not provided, creates a default logger)
         """
         self.url = url
         self.project = project
