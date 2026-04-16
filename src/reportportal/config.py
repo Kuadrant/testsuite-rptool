@@ -170,27 +170,3 @@ def get_effective_defaults() -> Dict[str, Any]:
 
     return merged
 
-
-def log_config_status() -> None:
-    """
-    Log the configuration file loading status at DEBUG level.
-
-    This should be called AFTER the logger is properly configured with the
-    desired log level. It will show users (when running with DEBUG) whether
-    their config file was found and loaded.
-    """
-    config_file = get_config_file_path()
-
-    if not config_file.exists():
-        logger.debug(f"Config file not found: {config_file}")
-        return
-
-    try:
-        with open(config_file, 'r') as f:
-            config = yaml.safe_load(f)
-            if config is None:
-                logger.debug(f"Config file exists but is empty: {config_file}")
-            else:
-                logger.debug(f"Loaded config from: {config_file} (keys: {list(config.keys())})")
-    except Exception as e:
-        logger.warning(f"Failed to load config file {config_file}: {e}")

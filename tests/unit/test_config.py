@@ -14,7 +14,6 @@ from reportportal.config import (
     get_config_defaults,
     merge_with_env_vars,
     get_effective_defaults,
-    log_config_status,
 )
 
 
@@ -291,58 +290,3 @@ class TestGetEffectiveDefaults:
                 # Built-in default when neither config nor ENV
                 assert defaults["rp_token"] is None
 
-
-class TestLogConfigStatus:
-    """Test log_config_status function."""
-
-    def test_log_config_status_file_not_found(self):
-        """Test log_config_status when config file doesn't exist."""
-        from loguru import logger
-        import io
-
-        # Capture loguru output
-        log_output = io.StringIO()
-        logger.remove()
-        logger.add(log_output, level="DEBUG", format="{message}")
-
-        with patch("reportportal.config.get_config_file_path") as mock_path:
-            mock_path.return_value = Path("/nonexistent/config.yaml")
-
-            with patch("pathlib.Path.exists", return_value=False):
-                log_config_status()
-
-                # Check that "not found" message was logged
-                output = log_output.getvalue()
-                assert "not found" in output.lower()
-                assert "/nonexistent/config.yaml" in output
-
-    def test_log_config_status_empty_file(self):
-        """Test log_config_status when config file is empty."""
-        from loguru import logger
-        import io
-
-        # Capture loguru output
-        log_output = io.StringIO()
-        logger.remove()
-        logger.add(log_output, level="DEBUG", format="{message}")
-
-        with patch("reportportal.config.get_config_file_path") as mock_path:
-            mock_path.return_value = Path("/mock/.config/rptool/settings.yaml")
-
-            with patch("pathlib.Path.exists", return_value=True):
-                with patch(
-                    "builtins.open",
-                    MagicMock(
-                        return_value=MagicMock(
-                            __enter__=MagicMock(
-                                return_value=MagicMock(read=MagicMock(return_value=""))
-                            ),
-                            __exit__=MagicMock(),
-                        )
-                    ),
-                ):
-                    log_config_status()
-
-                    # Check that "empty" message was logged
-                    output = log_output.getvalue()
-                    assert "empty" in output.lower()
