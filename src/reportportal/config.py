@@ -52,7 +52,7 @@ def load_config_file() -> Dict[str, Any]:
             if config is None:
                 logger.debug("Config file empty")
                 return {}
-            logger.debug("Config file loaded successfully")
+            logger.info("Config file loaded successfully")
             return config
     except Exception as e:
         logger.error("Error reading config file {} {}", config_file, e)
