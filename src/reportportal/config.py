@@ -37,7 +37,10 @@ def load_config_file() -> Dict[str, Any]:
 
     Returns:
         Dictionary with configuration values, empty dict if file doesn't exist
-        or can't be loaded
+        or is empty.
+
+    Raises:
+        ValueError: When config file cannot be parsed properly.
     """
 
     config_file = get_config_file_path()
@@ -162,7 +165,7 @@ def get_effective_defaults() -> Dict[str, Any]:
     # Inject REQUESTS_CA_BUNDLE into environment if configured but not already set
     if merged.get("requests_ca_bundle") and not os.environ.get("REQUESTS_CA_BUNDLE"):
         os.environ["REQUESTS_CA_BUNDLE"] = merged["requests_ca_bundle"]
-        # Debug message suppressed - logger not configured yet
+        logger.debug("Set REQUESTS_CA_BUNDLE from config: {}", merged['requests_ca_bundle'])
 
     return merged
 

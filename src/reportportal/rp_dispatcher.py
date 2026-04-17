@@ -164,13 +164,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     Returns:
         Exit code (0 for success, 1 for error)
     """
-    # only if not predefined LOG LEVEL as env variable
-    if not os.environ.get('LOG_LEVEL'):
-        # Remove default loguru handler immediately to prevent premature debug messages
-        # (e.g., during config file loading before log level is determined)
-        logger.remove()
-        # Setup intermittent WARNING logger for any configuration logs
-        logger.add(sink=sys.stderr, level='WARNING')
+    # Remove default loguru handler immediately to prevent premature debug messages
+    # (e.g., during config file loading before log level is determined)
+    logger.remove()
+    # Setup intermittent WARNING logger for any configuration logs
+    # or set to environmnet variable LOG_LEVEL if defined
+    logger.add(sink=sys.stderr, level=os.environ.get('LOG_LEVEL', "").upper() or 'WARNING')
 
     try:
         parser = ap.create_main_parser()
