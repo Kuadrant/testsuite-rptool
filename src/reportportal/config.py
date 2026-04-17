@@ -55,9 +55,8 @@ def load_config_file() -> Dict[str, Any]:
             logger.info("Config file loaded successfully")
             return config
     except Exception as e:
-        logger.error("Error reading config file {} {}", config_file, e)
         # need to raise ValueError to indicate critical problem
-        raise ValueError("Error reading config file {} {}", config_file, e)
+        raise ValueError(f"Error reading config file {config_file} {e}")
 
 
 def get_config_defaults() -> Dict[str, Any]:

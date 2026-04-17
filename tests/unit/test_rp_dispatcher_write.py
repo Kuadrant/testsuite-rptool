@@ -197,8 +197,12 @@ class TestRunWriteCommand:
 class TestWriteCommandIntegration:
     """Test write command integration with main dispatcher."""
 
-    def test_write_command_registered(self):
+    @patch('reportportal.config.load_config_file')
+    def test_write_command_registered(self, mock_load_config):
         """Test that write command is registered in dispatcher."""
+        # Mock config file to isolate test from user's environment
+        mock_load_config.return_value = {}
+
         parser = create_main_parser()
 
         # Parse write command help to verify it exists
@@ -208,8 +212,12 @@ class TestWriteCommandIntegration:
         # --help should exit with code 0
         assert exc_info.value.code == 0
 
-    def test_write_command_arguments(self):
+    @patch('reportportal.config.load_config_file')
+    def test_write_command_arguments(self, mock_load_config):
         """Test parsing write command arguments."""
+        # Mock config file to isolate test from user's environment
+        mock_load_config.return_value = {}
+
         parser = create_main_parser()
         args = parser.parse_args([
             '--log-level', 'DEBUG',
@@ -231,8 +239,12 @@ class TestWriteCommandIntegration:
         assert args.trigger_auto_analysis is True
         assert args.junits == ['test.xml']
 
-    def test_write_command_missing_junit_file(self):
+    @patch('reportportal.config.load_config_file')
+    def test_write_command_missing_junit_file(self, mock_load_config):
         """Test that missing JUnit file raises error."""
+        # Mock config file to isolate test from user's environment
+        mock_load_config.return_value = {}
+
         parser = create_main_parser()
 
         with pytest.raises(SystemExit) as exc_info:
