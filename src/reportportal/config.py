@@ -35,9 +35,6 @@ def load_config_file() -> Dict[str, Any]:
     """
     Load configuration from YAML file.
 
-    Note: Debug messages during loading are suppressed (logger not configured yet).
-    Use log_config_status() after logger is configured to see config loading status.
-
     Returns:
         Dictionary with configuration values, empty dict if file doesn't exist
         or can't be loaded
@@ -46,21 +43,21 @@ def load_config_file() -> Dict[str, Any]:
     config_file = get_config_file_path()
 
     if not config_file.exists():
-        # Debug message suppressed - will be logged by log_config_status() if needed
+        logger.debug("No config file present, using defaults")
         return {}
 
     try:
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
             if config is None:
-                # Debug message suppressed - will be logged by log_config_status() if needed
+                logger.debug("Config file empty")
                 return {}
-            # Debug message suppressed - will be logged by log_config_status() if needed
+            logger.debug("Config file loaded successfully")
             return config
     except Exception as e:
-        # Warning should be shown, but logger may not be configured yet
-        # Will be logged by log_config_status() if needed
-        return {}
+        logger.error("Error reading config file {} {}", config_file, e)
+        # need to raise ValueError to indicate critical problem
+        raise ValueError("Error reading config file {} {}", config_file, e)
 
 
 def get_config_defaults() -> Dict[str, Any]:

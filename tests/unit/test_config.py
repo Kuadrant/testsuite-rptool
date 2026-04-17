@@ -84,7 +84,7 @@ log_level: "DEBUG"
             os.unlink(temp_path)
 
     def test_load_config_file_invalid_yaml(self):
-        """Test loading invalid YAML file."""
+        """Test loading invalid YAML file raises ValueError."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("invalid: yaml: content:")
             temp_path = f.name
@@ -92,9 +92,13 @@ log_level: "DEBUG"
         try:
             with patch("reportportal.config.get_config_file_path") as mock_path:
                 mock_path.return_value = Path(temp_path)
-                config = load_config_file()
-                # Should return empty dict on error
-                assert config == {}
+                # Should raise ValueError on error
+                with pytest.raises(ValueError) as exc_info:
+                    load_config_file()
+
+                # Check error message contains file path
+                error_msg = str(exc_info.value)
+                assert "Error reading config file" in error_msg
         finally:
             os.unlink(temp_path)
 
