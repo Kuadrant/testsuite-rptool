@@ -211,18 +211,31 @@ class RPWriter:
         logger.debug(f'Suite timestamp {suite_timestamp}')
         suite_runtime = 0
 
+        # Counting test reruns per test suite
+        rerun_test_count = 0
+        case_results = []
+        for case_data in suite_data['test_cases']:
+            case_result = self.property_filter.filter_case_properties(case_data['properties'])
+            case_results.append(case_result)
+            if case_result.reruns > 0:
+                rerun_test_count += 1
+
+        suite_attrs = list(suite_properties)
+        if rerun_test_count > 0:
+            suite_attrs.append({"key": "tests_with_reruns", "value": str(rerun_test_count)})
+
         # Start test suite
         suite_id = self.rp_client.start_test_suite(
             name=suite_data['name'],
             start_time=str(suite_timestamp),
-            attributes=suite_properties,
+            attributes=suite_attrs,
             description=suite_description
         )
 
         # Process all test cases in the suite
-        for case_data in suite_data['test_cases']:
+        for case_data, case_result in zip(suite_data['test_cases'], case_results):
             case_runtime = self._process_test_case(
-                case_data, suite_id, suite_timestamp + suite_runtime
+                case_data, case_result, suite_id, suite_timestamp + suite_runtime
             )
             # Disabling suite_runtime tally, due to Interrupted test cases
             # because of parallel run, total runtime is larger than actual time
@@ -232,7 +245,7 @@ class RPWriter:
         self.rp_client.finish_test_suite(
             suite_id,
             end_time=str(suite_timestamp + suite_runtime),
-            attributes=suite_properties
+            attributes=suite_attrs
         )
     
     def _create_failed_attempts(self, test_name: str, case_result,
@@ -283,22 +296,20 @@ class RPWriter:
                          f"{attempt + 1}/{case_result.reruns} for '{test_name}'")
         return original_id
 
-    def _process_test_case(self, case_data: dict, suite_id: str, start_time: int) -> int:
+    def _process_test_case(self, case_data: dict, case_result,
+                           suite_id: str, start_time: int) -> int:
         """
         Process a single test case.
 
         Args:
             case_data: Test case data dictionary
+            case_result: Pre-filtered case property result
             suite_id: Parent suite ID
             start_time: Test case start time
 
         Returns:
             Test case runtime in milliseconds
         """
-        # Filter case properties
-        case_result = self.property_filter.filter_case_properties(
-            case_data['properties']
-        )
 
         # Generate test case name (pytest-style)
         test_name = f"{case_data['converted_classname']}::{case_data['name']}"
