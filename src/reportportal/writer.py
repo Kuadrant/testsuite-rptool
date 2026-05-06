@@ -235,7 +235,8 @@ class RPWriter:
         # Process all test cases in the suite
         for case_data, case_result in zip(suite_data['test_cases'], case_results):
             case_runtime = self._process_test_case(
-                case_data, case_result, suite_id, suite_timestamp + suite_runtime
+                case_data, case_result, suite_id, suite_timestamp + suite_runtime,
+                suite_name=suite_data['name']
             )
             # Disabling suite_runtime tally, due to Interrupted test cases
             # because of parallel run, total runtime is larger than actual time
@@ -248,7 +249,8 @@ class RPWriter:
             attributes=suite_attrs
         )
     
-    def _create_failed_attempts(self, test_name: str, case_result,
+    def _create_failed_attempts(self, test_name: str, test_case_id: str,
+                               case_result,
                                suite_id: str, start_time: int, rerun_duration: int) -> str:
         """
         Create all failed rerun attempts before the final test result.
@@ -257,7 +259,8 @@ class RPWriter:
         are retries referencing the original via retry_of (RP 25.x).
 
         Args:
-            test_name: Full test case name
+            test_name: Test display name and code reference (e.g. "tests/foo.py::test_bar")
+            test_case_id: Suite-qualified identifier for RP history matching (e.g. "smoke: tests/foo.py::test_bar")
             case_result: Filtered case property result
             suite_id: Parent suite ID
             start_time: Test case start time
@@ -277,6 +280,7 @@ class RPWriter:
                 attributes=case_result.properties,
                 description=case_result.description,
                 code_ref=test_name,
+                test_case_id=test_case_id,
                 retry=not is_original,
                 retry_of=None if is_original else original_id
             )
@@ -297,7 +301,8 @@ class RPWriter:
         return original_id
 
     def _process_test_case(self, case_data: dict, case_result,
-                           suite_id: str, start_time: int) -> int:
+                           suite_id: str, start_time: int,
+                           suite_name: str = "") -> int:
         """
         Process a single test case.
 
@@ -306,13 +311,17 @@ class RPWriter:
             case_result: Pre-filtered case property result
             suite_id: Parent suite ID
             start_time: Test case start time
+            suite_name: Parent suite name, used to qualify code_ref
 
         Returns:
             Test case runtime in milliseconds
         """
 
-        # Generate test case name (pytest-style)
+        # Generate test name (pytest-style)
         test_name = f"{case_data['converted_classname']}::{case_data['name']}"
+
+        # Suite-qualified test_case_id for RP history matching
+        test_case_id = f"{suite_name}: {test_name}" if suite_name else test_name
 
         # Create failed rerun attempts before the final result
         original_id = None
@@ -320,7 +329,7 @@ class RPWriter:
         if case_result.reruns > 0:
             rerun_duration = case_data['time'] // (case_result.reruns + 1)
             original_id = self._create_failed_attempts(
-                test_name, case_result, suite_id, start_time, rerun_duration
+                test_name, test_case_id, case_result, suite_id, start_time, rerun_duration
             )
             final_start_time = start_time + (case_result.reruns * rerun_duration)
 
@@ -332,6 +341,7 @@ class RPWriter:
             attributes=case_result.properties,
             description=case_result.description,
             code_ref=test_name,
+            test_case_id=test_case_id,
             retry=original_id is not None,
             retry_of=original_id
         )

@@ -230,6 +230,7 @@ class TestReportPortalClientWrapper:
             description="Case description",
             parent_item_id="suite_456",
             code_ref=None,
+            test_case_id=None,
             retry=False,
             retry_of=None
         )
@@ -258,6 +259,7 @@ class TestReportPortalClientWrapper:
             description="Case description",
             parent_item_id="suite_456",
             code_ref="path/to/test.py::test_name",
+            test_case_id=None,
             retry=False,
             retry_of=None
         )

@@ -248,6 +248,7 @@ class ReportPortalClientWrapper:
                        attributes: Optional[List[Dict]] = None,
                        description: Optional[str] = None,
                        code_ref: Optional[str] = None,
+                       test_case_id: Optional[str] = None,
                        retry: bool = False,
                        retry_of: Optional[str] = None) -> str:
         """
@@ -260,6 +261,7 @@ class ReportPortalClientWrapper:
             attributes: Test case attributes
             description: Test case description
             code_ref: Code reference for the test (e.g., "path/to/test.py::test_name")
+            test_case_id: Explicit test case identifier for RP history matching
             retry: If True, marks this test case as a retry of a previous attempt
             retry_of: UUID of the original test item this retry references (RP 25.x)
 
@@ -269,7 +271,7 @@ class ReportPortalClientWrapper:
         if self.dry_run:
             mock_id = self._generate_mock_id()
             logger.info(f"[DRY-RUN] Would start test case '{name}' with ID: {mock_id}")
-            logger.info(f"[DRY-RUN] Parent: {parent_id}, Code ref: {code_ref}, Retry: {retry}, Retry of: {retry_of}")
+            logger.info(f"[DRY-RUN] Parent: {parent_id}, Code ref: {code_ref}, Test case id: {test_case_id}, Retry: {retry}, Retry of: {retry_of}")
             return mock_id
 
         if not self.client:
@@ -284,11 +286,12 @@ class ReportPortalClientWrapper:
                 description=description,
                 parent_item_id=parent_id,
                 code_ref=code_ref,
+                test_case_id=test_case_id,
                 retry=retry,
                 retry_of=retry_of
             )
             logger.debug(f"Started test case '{name}' with ID: {case_id}")
-            logger.debug(f"Parent: {parent_id}, Code ref: {code_ref}, Retry: {retry}, Retry of: {retry_of}")
+            logger.debug(f"Parent: {parent_id}, Code ref: {code_ref}, Test case id: {test_case_id}, Retry: {retry}, Retry of: {retry_of}")
             return case_id
         except Exception as e:
             logger.error(f"Failed to start test case '{name}': {e}")
