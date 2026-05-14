@@ -478,7 +478,7 @@ def _resolve_test_target(client: 'ReportPortalAPIClient', launch_id: str, target
     # TODO: rewrite to use fetch_test_items once it supports additional filters (see https://github.com/Kuadrant/testsuite-rptool/issues/2)
     parent_items = client.get_test_items(
         launch_id,
-        filters={'filter.eq.name': target_name, 'filter.eq.type': 'TEST'}
+        filters={'filter.eq.name': target_name, 'filter.eq.type': 'SUITE'}
     )
     if not parent_items:
         return None
