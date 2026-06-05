@@ -230,6 +230,12 @@ def _add_query_arguments(subparsers: argparse.ArgumentParser, defaults: dict) ->
         default=False
     )
     parser.add_argument(
+        "--show-logs",
+        action="store_true",
+        help="Display error logs for failed test items (only applies when --launch-id is specified)",
+        default=False
+    )
+    parser.add_argument(
         "--limit",
         type=int,
         default=None,  # This is the CLI default, actual defaults differ by query type

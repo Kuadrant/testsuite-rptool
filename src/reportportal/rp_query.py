@@ -437,6 +437,7 @@ def _extract_filter_options(options: Namespace) -> Dict[str, Any]:
         'attribute_regex_filters': getattr(options, 'attribute_regex', None) if hasattr(options, 'attribute_regex') and options.attribute_regex else None,
         'show_attributes': getattr(options, 'show_attributes', False),
         'names_only': getattr(options, 'names_only', False),
+        'show_logs': getattr(options, 'show_logs', False),
         'limit': getattr(options, 'limit', None),
     }
 
@@ -485,6 +486,99 @@ def _resolve_test_target(client: 'ReportPortalAPIClient', launch_id: str, target
     parent_id = parent_items[0].get('id')
     logger.info(f"Found test target '{target_name}' with ID: {parent_id}")
     return parent_id
+
+
+# =============================================================================
+# Log Display
+# =============================================================================
+
+MAX_LOG_MESSAGE_LENGTH = 1000
+
+
+def _truncate_message(message) -> str:
+    message = str(message) if message else ''
+    if len(message) > MAX_LOG_MESSAGE_LENGTH:
+        return message[:MAX_LOG_MESSAGE_LENGTH] + '...'
+    return message
+
+
+def _fetch_error_logs(item_id: str, client: ReportPortalAPIClient) -> List[Dict]:
+    """Fetch ERROR-level logs for an item. Returns empty list on failure."""
+    try:
+        return client.get_logs(str(item_id))
+    except Exception as e:
+        logger.debug(f"Failed to fetch logs for item {item_id}: {e}")
+        return []
+
+
+def _print_logs(logs: List[Dict], indent: str = "  ") -> None:
+    """Print truncated log messages with the given indentation."""
+    for log_entry in logs:
+        message = _truncate_message(log_entry.get('message', ''))
+        for line in message.splitlines():
+            print(f"{indent}{line}")
+
+
+def _get_retry_items(item: Dict, client: ReportPortalAPIClient) -> List[Dict]:
+    """Fetch retry items (earlier attempts) for a test item."""
+    item_id = item.get('id')
+    try:
+        detail = client.get_test_item_by_id(str(item_id))
+        retries = detail.get('retries', [])
+        if not retries:
+            logger.debug(f"No retries found for item {item_id}")
+            return []
+
+        logger.debug(f"Found {len(retries)} retries for item {item_id}")
+        retry_items = []
+        for retry in retries:
+            retry_id = retry.get('id') if isinstance(retry, dict) else retry
+            try:
+                retry_detail = client.get_test_item_by_id(str(retry_id))
+                retry_items.append(retry_detail)
+            except Exception as e:
+                logger.debug(f"Failed to fetch retry item {retry_id}: {e}")
+        return retry_items
+    except Exception as e:
+        logger.debug(f"Failed to fetch item detail for {item_id}: {e}")
+        return []
+
+
+def _output_failed_logs(items: List[Dict], client: ReportPortalAPIClient) -> None:
+    """Fetch and display error logs for failed test items, including retries."""
+    failed_steps = [
+        item for item in items
+        if item.get('type') == utils.ITEM_TYPE_STEP and item.get('status') == utils.STATUS_FAILED
+    ]
+
+    if not failed_steps:
+        print("\nNo failed tests found, nothing to show for --show-logs.")
+        return
+
+    print("\n--- Failure Details ---\n")
+
+    for item in failed_steps:
+        item_name = item.get('name', 'N/A')
+        retry_items = _get_retry_items(item, client)
+
+        if retry_items:
+            chain = retry_items + [item]
+            print(f"{item_name} ({len(chain)} attempts):")
+            for i, attempt in enumerate(chain, 1):
+                status = attempt.get('status', 'N/A')
+                print(f"  Attempt {i} ({status}):")
+                if status == utils.STATUS_FAILED:
+                    logs = _fetch_error_logs(attempt.get('id'), client)
+                    _print_logs(logs, indent="    ")
+            print()
+        else:
+            logs = _fetch_error_logs(item.get('id'), client)
+            print(f"{item_name}:")
+            if not logs:
+                print("  (no error logs found)")
+            else:
+                _print_logs(logs)
+            print()
 
 
 # =============================================================================
@@ -564,6 +658,18 @@ def run_query(options: Namespace) -> int:
             show_attributes=filter_opts['show_attributes'],
             names_only=filter_opts['names_only']
         )
+
+        if filter_opts['show_logs'] and filter_opts['names_only']:
+            logger.warning("--show-logs is ignored when --names-only is used")
+        elif filter_opts['show_logs']:
+            filtered_items = apply_all_filters(
+                items,
+                name_regex=filter_opts['name_regex'],
+                attribute_filters=filter_opts['attribute_filters'],
+                attribute_regex_filters=filter_opts['attribute_regex_filters'],
+            )
+            if filtered_items:
+                _output_failed_logs(filtered_items, client)
     else:
         # Query launches
         if filter_msg:
