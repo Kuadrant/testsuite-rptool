@@ -383,6 +383,26 @@ class ReportPortalAPIClient:
         logger.debug(f"Retrieved {len(items)} test items")
         return items
 
+    def get_logs(self,
+                item_id: str,
+                level: Optional[str] = 'ERROR',
+                page_size: int = DEFAULT_PAGE_SIZE) -> List[Dict]:
+        """Get log entries for a test item, optionally filtered by level."""
+        logger.debug(f"Fetching logs for item {item_id}")
+
+        params = {'filter.eq.item': item_id, 'page.size': page_size}
+        if level:
+            params['filter.in.level'] = level
+
+        query_string = '&'.join(f'{k}={v}' for k, v in params.items() if v is not None)
+        endpoint = f'/api/v1/{self.project}/log?{query_string}'
+
+        data = self._get(endpoint)
+        logs = data.get('content', [])
+
+        logger.debug(f"Retrieved {len(logs)} log entries for item {item_id}")
+        return logs
+
     def get_test_item_by_id(self, item_id: str) -> Dict:
         """
         Get a specific test item by ID.
