@@ -251,12 +251,12 @@ class RPWriter:
     
     def _create_failed_attempts(self, test_name: str, test_case_id: str,
                                case_result,
-                               suite_id: str, start_time: int, rerun_duration: int) -> str:
+                               suite_id: str, start_time: int, rerun_duration: int) -> None:
         """
         Create all failed rerun attempts before the final test result.
 
-        The first attempt is the original item (retry=False). Subsequent attempts
-        are retries referencing the original via retry_of (RP 25.x).
+        Each attempt is created with retry=True (except the first). RP 26
+        groups retries implicitly by matching uniqueId and parentId.
 
         Args:
             test_name: Test display name and code reference (e.g. "tests/foo.py::test_bar")
@@ -265,11 +265,7 @@ class RPWriter:
             suite_id: Parent suite ID
             start_time: Test case start time
             rerun_duration: Duration allocated per retry attempt
-
-        Returns:
-            UUID of the original (first) test item
         """
-        original_id = None
         for attempt in range(case_result.reruns):
             is_original = (attempt == 0)
             attempt_start = start_time + (attempt * rerun_duration)
@@ -282,10 +278,7 @@ class RPWriter:
                 code_ref=test_name,
                 test_case_id=test_case_id,
                 retry=not is_original,
-                retry_of=None if is_original else original_id
             )
-            if is_original:
-                original_id = item_id
             if attempt < len(case_result.rerun_messages):
                 self.rp_client.log_message(item_id, case_result.rerun_messages[attempt], "ERROR")
             if attempt < len(case_result.rerun_outputs):
@@ -298,7 +291,6 @@ class RPWriter:
             )
             logger.debug(f"Created {'original' if is_original else 'retry'} attempt "
                          f"{attempt + 1}/{case_result.reruns} for '{test_name}'")
-        return original_id
 
     def _process_test_case(self, case_data: dict, case_result,
                            suite_id: str, start_time: int,
@@ -324,11 +316,10 @@ class RPWriter:
         test_case_id = f"{suite_name}: {test_name}" if suite_name else test_name
 
         # Create failed rerun attempts before the final result
-        original_id = None
         final_start_time = start_time
         if case_result.reruns > 0:
             rerun_duration = case_data['time'] // (case_result.reruns + 1)
-            original_id = self._create_failed_attempts(
+            self._create_failed_attempts(
                 test_name, test_case_id, case_result, suite_id, start_time, rerun_duration
             )
             final_start_time = start_time + (case_result.reruns * rerun_duration)
@@ -342,8 +333,7 @@ class RPWriter:
             description=case_result.description,
             code_ref=test_name,
             test_case_id=test_case_id,
-            retry=original_id is not None,
-            retry_of=original_id
+            retry=case_result.reruns > 0,
         )
 
         # Log test outputs and results for the final attempt
