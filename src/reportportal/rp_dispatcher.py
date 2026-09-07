@@ -20,6 +20,7 @@ except ImportError:
 from . import ap
 from .writer import RPWriter
 from .rp_query import run_query
+from .rp_attach import run_attach
 from .rp_trigger import run_auto_trigger
 from .rp_release import run_release_summary
 
@@ -121,6 +122,12 @@ def run_query_command(args: argparse.Namespace, parser: argparse.ArgumentParser)
     return run_query(args)
 
 
+def run_attach_command(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    """Run ``rptool attach``."""
+    ap._validate_rp_options(args, parser)
+    return run_attach(args)
+
+
 def run_trigger_command(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     """
     Execute the trigger command (rp_trigger).
@@ -192,6 +199,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     command_handlers = {
         'write': run_write_command,
         'query': run_query_command,
+        'attach': run_attach_command,
         'trigger': run_trigger_command,
         'summary': run_summary_command,
         'completion': run_completion_command,
