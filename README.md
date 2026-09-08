@@ -26,6 +26,7 @@ rptool write --launch-name "Smoke Tests" results/junit_smoke.xml
 
 # Query and analyze
 rptool query --launch-id abc123
+rptool attach --launch-name "Smoke Tests" --dir debug-resources/
 rptool trigger
 rptool summary --attribute kuadrant:v1.3.1
 ```
@@ -33,6 +34,7 @@ rptool summary --attribute kuadrant:v1.3.1
 ## Features
 
 - **JUnit Import**: Convert JUnit XML to ReportPortal launches with property preservation
+- **Attach YAML**: Match collected cluster resource dumps to FAILED test items
 - **Query & Filter**: Query launches and test items by status, attributes, time range
 - **Auto-Analysis**: Trigger ReportPortal's auto-analysis on uploaded results
 - **Release Summaries**: Generate testing reports grouped by attributes
@@ -43,6 +45,7 @@ rptool summary --attribute kuadrant:v1.3.1
 
 **`rptool`** - Unified CLI with subcommands:
 - `write` - Import JUnit results to ReportPortal
+- `attach` - Attach collected YAML dumps to failed test items
 - `query` - Query launches and test items
 - `trigger` - Trigger auto-analysis
 - `summary` - Generate release testing summary
@@ -140,6 +143,9 @@ additional steps necessary for you shell.
 ```bash
 # Import JUnit results
 rptool write --launch-name "Smoke Tests" results/junit_smoke.xml
+
+# Attach collected cluster YAML to failed items in that launch
+rptool attach --launch-name "Smoke Tests" --dir debug-resources/
 
 # Query launches
 rptool query --launch-id abc123

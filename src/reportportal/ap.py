@@ -88,6 +88,7 @@ def create_main_parser() -> argparse.ArgumentParser:
     subparsers_hanlers = [
         _add_write_arguments,
         _add_query_arguments,
+        _add_attach_arguments,
         _add_trigger_arguments,
         _add_summary_arguments,
         _add_completion_arguments,
@@ -240,6 +241,33 @@ def _add_query_arguments(subparsers: argparse.ArgumentParser, defaults: dict) ->
         type=int,
         default=None,  # This is the CLI default, actual defaults differ by query type
         help="Maximum number of items to fetch from API. Default: 24 for launches, unlimited for test items. Use 0 for unlimited."
+    )
+
+
+def _add_attach_arguments(subparsers: argparse.ArgumentParser, defaults: dict) -> None:
+    """Add arguments for attach command."""
+    parser = subparsers.add_parser(
+        "attach",
+        help="Attach YAML files to failed test items in a ReportPortal launch",
+        description="Match collected cluster YAML dumps to FAILED test items and upload them as log attachments",
+    )
+    _add_common_rp_args(parser, defaults)
+
+    launch_group = parser.add_mutually_exclusive_group(required=True)
+    launch_group.add_argument(
+        "--launch-name",
+        help="Launch name (most recent launch with this name). Append ' #N' to select a specific number",
+        default=None,
+    )
+    launch_group.add_argument(
+        "--launch-id",
+        help="Launch ID / UUID to attach files to",
+        default=None,
+    )
+    parser.add_argument(
+        "--dir",
+        required=True,
+        help="Directory with collected YAML files (e.g. debug-resources/)",
     )
 
 

@@ -5,9 +5,11 @@ Provides both class-based and function-based interfaces for interacting
 with ReportPortal REST API.
 """
 
+import json
 import requests
+from pathlib import Path
 from typing import List, Dict, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from loguru import logger
 
 
@@ -402,6 +404,37 @@ class ReportPortalAPIClient:
 
         logger.debug(f"Retrieved {len(logs)} log entries for item {item_id}")
         return logs
+
+    def attach_file_to_item(self, item_uuid: str, file_path: Path, launch_uuid: Optional[str] = None) -> Dict:
+        """Upload a file as an INFO log attachment on a test item."""
+        endpoint = f"/api/v1/{self.project}/log"
+        url = f"{self.url.rstrip('/')}{endpoint}"
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        log_entry: Dict[str, Any] = {
+            "file": {"name": file_path.name},
+            "itemUuid": str(item_uuid),
+            "level": "INFO",
+            "message": f"Collected cluster resources: {file_path.name}",
+            "time": timestamp,
+        }
+        if launch_uuid:
+            log_entry["launchUuid"] = str(launch_uuid)
+
+        headers = {
+            "Authorization": f"bearer {self.token}",
+            "accept": "*/*",
+        }
+        logger.debug("Attaching {} to item {}", file_path.name, item_uuid)
+
+        def _post_multipart():
+            with open(file_path, "rb") as handle:
+                files = {
+                    "json_request_part": (None, json.dumps([log_entry]), "application/json"),
+                    "file": (file_path.name, handle, "application/x-yaml"),
+                }
+                return requests.post(url, headers=headers, files=files, timeout=DEFAULT_TIMEOUT)
+
+        return self._request(_post_multipart, endpoint)
 
     def get_test_item_by_id(self, item_id: str) -> Dict:
         """
